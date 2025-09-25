@@ -10,3 +10,269 @@
   <p>Este é meu primeiro site publicado no GitHub Pages 🚀</p>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agendamento Avançado de Horários</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f0fa;
+      color: #4a235a;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 50px;
+      min-height: 100vh;
+    }
+
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(120, 81, 169, 0.2);
+      max-width: 400px;
+      width: 100%;
+    }
+
+    h2 {
+      text-align: center;
+      color: #7e57c2;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #ba68c8;
+    }
+
+    button {
+      background-color: #ba68c8;
+      color: white;
+      font-size: 16px;
+      margin-top: 20px;
+      cursor: pointer;
+      border: none;
+    }
+
+    button:hover {
+      background-color: #9c27b0;
+    }
+
+    .success-message {
+      display: none;
+      color: green;
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .error-message {
+      display: none;
+      color: red;
+      text-align: center;
+      margin-top: 15px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Agende seu Horário</h2>
+    <form id="formAgendamento">
+      <label for="nome">Nome:</label>
+      <input type="text" id="nome" name="nome" required />
+
+      <label for="email">E-mail:</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="data">Data:</label>
+      <input type="date" id="data" name="data" required />
+
+      <label for="hora">Hora:</label>
+      <select id="hora" name="hora" required>
+        <option value="">Selecione uma hora</option>
+      </select>
+
+      <button type="submit">Agendar</button>
+      <div class="success-message" id="mensagemSucesso">Horário agendado com sucesso!</div>
+      <div class="error-message" id="mensagemErro">Este horário já está ocupado. Por favor, escolha outro.</div>
+    </form>
+  </div>
+
+  <script>
+    // --------- UTILITÁRIOS ----------
+
+    // formato HH:MM → número de minutos desde meia‑noite
+    function horaParaMinutos(hhmm) {
+      const [h, m] = hhmm.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    // formato número de minutos → "HH:MM"
+    function minutosParaHora(minutos) {
+      const h = Math.floor(minutos / 60);
+      const m = minutos % 60;
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    // Recupera agendamentos salvos
+    function obterAgendamentos() {
+      const dados = localStorage.getItem('agendamentos');
+      return dados ? JSON.parse(dados) : {};
+      // será um objeto com chave como "YYYY-MM-DD" valor: array de horas reservadas ["09:00", "10:00", ...]
+    }
+
+    // Salvar um agendamento local
+    function salvarAgendamentoLocal(data, hora, info) {
+      const ag = obterAgendamentos();
+      if (!ag[data]) {
+        ag[data] = [];
+      }
+      ag[data].push({ hora, info }); 
+      localStorage.setItem('agendamentos', JSON.stringify(ag));
+    }
+
+    // Verifica se horário está ocupado
+    function horarioOcupado(data, hora) {
+      const ag = obterAgendamentos();
+      if (!ag[data]) return false;
+      return ag[data].some(item => item.hora === hora);
+    }
+
+    // Limpar mensagens
+    function limparMensagens() {
+      document.getElementById('mensagemErro').style.display = 'none';
+      document.getElementById('mensagemSucesso').style.display = 'none';
+    }
+
+    // --------- FINALIDADES DE FRONTEND ----------
+
+    const selectHora = document.getElementById('hora');
+    const dataInput = document.getElementById('data');
+
+    // Gera horas: 09:00 a 18:00, passo de 1h
+    function gerarOpcoesHora() {
+      // limpar opções atuais (mantém opção de prompt)
+      selectHora.innerHTML = '<option value="">Selecione uma hora</option>';
+      for (let hora = 9; hora <= 18; hora++) {
+        const hhmm = String(hora).padStart(2, '0') + ':00';
+        const option = document.createElement('option');
+        option.value = hhmm;
+        option.textContent = hhmm;
+        selectHora.appendChild(option);
+      }
+    }
+
+    // Atualizar opções disponíveis dependendo da data escolhida
+    function atualizarHorasDisponiveis() {
+      const data = dataInput.value;
+      gerarOpcoesHora();
+      if (!data) return;
+      const ag = obterAgendamentos();
+      const reservados = ag[data] ? ag[data].map(item => item.hora) : [];
+
+      // para cada option, verificar se está reservado, se sim desativar
+      for (let option of selectHora.options) {
+        if (option.value === '' ) continue;
+        if (reservados.includes(option.value)) {
+          option.disabled = true;
+          option.textContent = option.value + ' (ocupado)';
+        }
+      }
+    }
+
+    // Inicialização
+    gerarOpcoesHora();
+
+    // Quando data muda, atualizar os horários disponíveis
+    dataInput.addEventListener('change', function() {
+      limparMensagens();
+      atualizarHorasDisponiveis();
+    });
+
+    // Quando o formulário é submetido
+    document.getElementById('formAgendamento').addEventListener('submit', function(e) {
+      e.preventDefault();
+      limparMensagens();
+
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const data = document.getElementById('data').value;
+      const hora = document.getElementById('hora').value;
+
+      if (!nome || !email || !data || !hora) {
+        // validação simples
+        document.getElementById('mensagemErro').textContent = 'Preencha todos os campos.';
+        document.getElementById('mensagemErro').style.display = 'block';
+        return;
+      }
+
+      if (horarioOcupado(data, hora)) {
+        document.getElementById('mensagemErro').textContent = 'Este horário já está ocupado. Por favor, escolha outro.';
+        document.getElementById('mensagemErro').style.display = 'block';
+        return;
+      }
+
+      // Salvar localmente
+      salvarAgendamentoLocal(data, hora, { nome, email });
+
+      // Opcional: Enviar ao backend real
+      /*
+      fetch('https://seu-backend.com/api/agendamentos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nome, email, data, hora })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Falha ao salvar no servidor');
+        }
+        return response.json();
+      })
+      .then(dataResp => {
+        // resposta do servidor, se quiser, pode incluir código para enviar email
+        console.log('Agendamento salvo no servidor:', dataResp);
+      })
+      .catch(err => {
+        console.error('Erro no envio ao servidor:', err);
+      });
+      */
+
+      // Mostrar mensagem de sucesso
+      document.getElementById('mensagemSucesso').style.display = 'block';
+
+      // Resetar formulário
+      this.reset();
+
+      // Atualizar horas disponíveis (para bloquear horário recém reservado)
+      atualizarHorasDisponiveis();
+    });
+
+  </script>
+
+</body>
+</html>
